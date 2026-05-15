@@ -96,7 +96,7 @@ Supply_Chain_AI_Project/
 
 ## 4. 快速开始
 
-### 方式 A · 一键脚本（最简单）
+### 方式 A · 一键脚本
 
 **Windows**：双击 `run.bat`，或在终端里
 ```bat
@@ -111,7 +111,7 @@ chmod +x run.sh
 
 脚本会依次执行：安装依赖 → 跑实验脚本 → 启动 Streamlit 看板。
 
-### 方式 B · conda 环境（推荐 Windows 用户，最稳）
+### 方式 B · conda 环境
 
 ```bash
 conda env create -f environment.yml
