@@ -19,9 +19,9 @@
 | 基线策略 A（全局固定）Fill Rate | 94.88% | `sample_outputs/headline_metrics.csv` | `fill_rate_fixed` |
 | 主策略 C（Prophet 动态）Fill Rate | 98.33% | `sample_outputs/headline_metrics.csv` | `fill_rate_dynamic` |
 
-### 1.2 截图
+### 1.2 系统界面
 
-#### Streamlit 看板实拍
+#### Streamlit 看板
 
 **主看板** — Prophet 预测曲线 + 关键指标卡 + 补货建议
 ![dashboard](screenshot_dashboard.png)
@@ -29,7 +29,7 @@
 **AI 助手 Tab 入口** — 示例问题 + 对话输入框 + 智谱 API Key 配置
 ![agent tab](screenshot_agent_tab.png)
 
-**Agent 工具调用实拍** — 自然语言提问 → 自动调用 `compute_replenishment` → 结构化决策表
+**Agent 工具调用测试** — 自然语言提问 → 自动调用 `compute_replenishment` → 结构化决策表
 ![agent demo](screenshot_agent_demo.png)
 
 #### 脚本自动产出的分析图
@@ -96,7 +96,9 @@ Supply_Chain_AI_Project/
 
 ## 4. 快速开始
 
-### 方式 A · 一键脚本
+### 4.1 启动系统
+
+#### 方式 A · 一键脚本
 
 **Windows**：双击 `run.bat`，或在终端里
 ```bat
@@ -111,7 +113,7 @@ chmod +x run.sh
 
 脚本会依次执行：安装依赖 → 跑实验脚本 → 启动 Streamlit 看板。
 
-### 方式 B · conda 环境
+#### 方式 B · conda 环境
 
 ```bash
 conda env create -f environment.yml
@@ -120,7 +122,7 @@ python 01_demand_forecast_and_replenishment.py
 streamlit run 02_streamlit_app.py
 ```
 
-### 方式 C · pip
+#### 方式 C · pip
 
 ```bash
 pip install -r requirements.txt
@@ -133,7 +135,7 @@ streamlit run 02_streamlit_app.py
 
 启动看板后浏览器自动打开 `http://localhost:8501`，按 `Ctrl+C` 退出。
 
-### 4.1 AI 助手 Tab —— 需要智谱 AI API Key
+### 4.2 AI 助手 Tab —— 需要智谱 AI API Key
 
 主看板（Prophet 预测 + 补货建议）不需要 Key 即可使用。**AI 助手 Tab 调用智谱 GLM**，需要：
 
