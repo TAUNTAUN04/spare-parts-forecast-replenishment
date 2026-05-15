@@ -1,0 +1,2 @@
+validation_mae_avg,validation_mape_avg,validation_relative_mae_avg,improvement_vs_naive,stockout_reduction_pct,fill_rate_lift_pct,fill_rate_fixed,fill_rate_dynamic
+23.714,0.8625,0.2998,0.0534,0.6494,0.0346,0.9488,0.9833
