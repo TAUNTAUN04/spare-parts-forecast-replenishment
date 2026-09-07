@@ -1,118 +1,133 @@
 # 智能备件需求预测与补货决策（AI + 供应链 MVP）
 
-> 基于 20 SKU × 2 仓库 × 10,000+ 条日级历史消耗数据，用 **Prophet** 预测未来 4 周需求，结合 **(R, s, S) 动态再订货点策略** 替代传统经验式补货——在测试期 28 天仿真中，**缺货风险降低约 65%**，Fill Rate 由 **94.9% → 98.3%**。
+这是一个面向备件库存管理的端到端应用。系统根据 SKU 和仓库的日级历史数据，使用 Prophet 预测需求，并结合动态再订货点策略生成补货建议；用户也可以通过 AI 助手用自然语言查询库存、预测需求和模拟下单。
 
-端到端 demo：Python 实验脚本 + Streamlit 交互看板。一条 `run.bat` 启动全部。
-
----
-
-## 1. 核心结果（30 秒看完）
-
-### 1.1 关键指标
-
-| 指标 | 数值 | 出处文件 | 出处字段 |
-|---|---|---|---|
-| 全 20 SKU 验证集 **相对 MAE** | **29.98%** | `sample_outputs/headline_metrics.csv` | `validation_relative_mae_avg` |
-| 全 20 SKU 验证集 sMAPE | 31.75% | `sample_outputs/validation_metrics_per_sku.csv` | `smape` (mean) |
-| Prophet 相对 naive 均值 MAE 改善 | +5.34% | `sample_outputs/headline_metrics.csv` | `improvement_vs_naive` |
-| **缺货风险（缺货天数）相对降低** | **64.94%** | `sample_outputs/headline_metrics.csv` | `stockout_reduction_pct` |
-| Fill Rate 提升 | +3.46 pp | `sample_outputs/headline_metrics.csv` | `fill_rate_lift_pct` |
-| 基线策略 A（全局固定）Fill Rate | 94.88% | `sample_outputs/headline_metrics.csv` | `fill_rate_fixed` |
-| 主策略 C（Prophet 动态）Fill Rate | 98.33% | `sample_outputs/headline_metrics.csv` | `fill_rate_dynamic` |
-
-### 1.2 截图
-
-#### Streamlit 看板实拍
-
-**主看板** — Prophet 预测曲线 + 关键指标卡 + 补货建议
-![dashboard](screenshot_dashboard.png)
-
-**AI 助手 Tab 入口** — 示例问题 + 对话输入框 + 智谱 API Key 配置
-![agent tab](screenshot_agent_tab.png)
-
-**Agent 工具调用实拍** — 自然语言提问 → 自动调用 `compute_replenishment` → 结构化决策表
-![agent demo](screenshot_agent_demo.png)
-
-#### 脚本自动产出的分析图
-
-**EDA 概览**（每日总需求 + 各 SKU 平均需求）
-![eda](sample_outputs/eda_overview.png)
-
-**Prophet 4 周预测 vs 实际**（示例：SKU001 @ WH_A）
-![demo forecast](sample_outputs/demo_forecast_SKU001_WH_A.png)
-
-**三种补货策略缺货天数对比**（28 天测试期）
-![strategy comparison](sample_outputs/strategy_comparison.png)
+项目包含 Python 分析脚本、Streamlit 交互看板和 AI Agent 工具层。主看板无需 API Key 即可使用。
 
 ---
 
-## 2. 数据集
+## 1. 项目功能
 
-- **来源**：Kaggle —— Inventory Replenishment Timeseries（共 10,000 条记录）
-- **规模**：20 SKU × 2 仓库（WH_A / WH_B）= 40 条序列，每条约 250 个连续日
-- **时间范围**：2025-05-11 → 2026-01-15（约 8 个月）
-- **关键字段**：
-  - `demand_units`（预测目标） · `demand_forecast_units`（数据自带的基线预测）
-  - `lead_time_days` · `safety_stock_units` · `service_level_target`
-  - `on_hand_units` · `on_order_units` · `arrivals_units` · `order_qty_units`
-  - `holiday_flag` · `promo_flag` · `weather_index` · `price_usd`
-  - `stockout`（0/1） · `fill_rate` · 各类成本列
+### 1.1 核心功能
+
+- **需求预测**：按 SKU 和仓库建立 Prophet 模型，展示历史需求、预测结果和预测区间。
+- **补货建议**：根据提前期需求、安全库存、在手库存和在途库存，计算再订货点、订到点及建议下单量。
+- **参数调整**：可以在主看板中修改预测天数、验证集天数、库存评审周期和安全库存计算方式。
+- **AI 助手**：通过自然语言查询库存状态、未来需求及补货建议，并支持沙盒模拟下单。
+- **离线分析**：批量处理全部 SKU/仓库组合，导出预测指标、补货建议和策略对比结果。
+
+推荐的操作顺序：选择 SKU 和仓库 → 查看未来需求 → 查看补货建议 → 按业务情况调整参数 → 使用 AI 助手进一步查询。
+
+### 1.2 系统界面
+
+#### 主看板
+
+主看板展示 Prophet 需求预测、库存状态和补货建议。
+
+![主看板](screenshot_dashboard.png)
+
+#### AI 助手
+
+AI 助手提供示例问题、对话输入框和智谱 AI API Key 配置入口。
+
+![AI 助手](screenshot_agent_tab.png)
+
+#### Agent 工具调用测试
+
+用户提出自然语言问题后，Agent 可以调用 `compute_replenishment` 等工具，并返回结构化的补货决策。
+
+![Agent 工具调用测试](screenshot_agent_demo.png)
 
 ---
 
-## 3. 项目结构
+## 2. 主看板使用说明
 
-```
-Supply_Chain_AI_Project/
-├── README.md
-├── run.bat                                       # Windows 一键运行
-├── run.sh                                        # macOS / Linux 一键运行
-├── requirements.txt                              # pip 依赖
-├── environment.yml                               # conda 环境（推荐 Windows 用户）
-├── .gitignore
-│
-├── 01_demand_forecast_and_replenishment.py       # 主实验脚本（6 SECTION）
-├── 02_streamlit_app.py                           # Streamlit 交互看板（含 AI 助手 Tab）
-├── agent_tools.py                                # 5 个工具函数 + JSON Schema + dispatch
-├── agent_core.py                                 # GLM tool-use 手动 loop（ZhipuAI SDK）
-│
-├── inventory_replenishment_timeseries_10000.csv  # 原始数据
-│
-├── sample_outputs/                               # 演示快照（已 commit）
-│   ├── headline_metrics.csv                      #   ← 核心 KPI 唯一出处
-│   ├── validation_metrics_per_sku.csv            #     每 SKU 的预测指标
-│   ├── replenishment_recommendation.csv          #     当前补货建议表
-│   ├── strategy_comparison.csv                   #     三策略缺货天数对比
-│   ├── sku_warehouse_summary.csv                 #     每 SKU/仓基础统计
-│   ├── eda_overview.png
-│   ├── demo_forecast_SKU001_WH_A.png
-│   └── strategy_comparison.png
-│
-├── outputs/        # 每次跑实验脚本的实时产物（.gitignore）
-└── run_logs/       # 每次运行的完整 stdout/stderr 日志（.gitignore）
-                    # 命名格式：YYYYMMDDHHMM.txt
-```
+### 2.1 需求预测
+
+在左侧选择 SKU 和仓库后，系统会按对应的历史日需求训练 Prophet 模型。预测图包括：
+
+- **历史实际**：模型训练使用的历史需求。
+- **验证集实际与预测**：用于观察模型在已知历史区间内的预测效果。
+- **未来预测**：用于支持库存计划的未来需求趋势。
+- **95% 预测区间**：表示预测的不确定范围，区间越宽说明不确定性越高。
+
+实际使用时，应重点关注未来预测的方向、峰值和波动范围。验证集 MAE、MAPE 和 Bias 是模型测试信息，用于辅助判断预测是否可靠，不是最终的补货结论。
+
+### 2.2 补货建议
+
+系统使用周期评审 `(R, s, S)` 策略：
+
+- **库存位置** = 在手库存 `on_hand` + 在途库存 `on_order`
+- **再订货点 ROP** = 提前期预测需求 + 安全库存
+- **订到点 S** = 再订货点 ROP + 评审周期预测需求
+- 当库存位置低于 ROP 时，系统建议将库存补充到 S
+
+| 结果 | 含义 | 使用建议 |
+|---|---|---|
+| 当前在手 `on_hand` | 当前可用库存 | 应替换为企业最新库存数据 |
+| 在途 `on_order` | 已下单但尚未到货的数量 | 应与采购订单或 ERP 在途数据保持一致 |
+| 安全库存 SS | 应对需求和交付波动的缓冲库存 | 可使用数据中的既有值，也可按服务水平重新计算 |
+| 再订货点 ROP | 触发补货的库存位置阈值 | 库存位置低于该值时需要考虑下单 |
+| 订到点 S | 本次补货后的目标库存位置 | 用于计算建议下单量 |
+| 建议下单量 | 按当前参数计算出的建议采购数量 | 下单前还需结合最小起订量、包装量、预算和供应商产能审核 |
+
+当前 `place_order` 仅执行沙盒模拟，将记录写入 `outputs/sandbox_orders.log`，不会连接真实采购系统。
+
+---
+
+## 3. 数据准备
+
+项目默认使用 `inventory_replenishment_timeseries_10000.csv`，包含 20 个 SKU、2 个仓库和约 10,000 条日级记录。
+
+主看板和 AI 助手直接读取该文件。接入实际业务数据时，最简单的方式是先备份示例文件，再用同名 CSV 替换它，并保持字段名和数据类型一致。
+
+### 3.1 主要字段
+
+| 字段 | 作用 | 是否建议替换为实际数据 |
+|---|---|---|
+| `date` | 业务日期 | 是 |
+| `sku_id` | 备件或物料编码 | 是 |
+| `warehouse` | 仓库编码 | 是 |
+| `demand_units` | 当日实际需求量，也是预测目标 | 是 |
+| `on_hand_units` | 当日在手库存 | 是，保证目标决策日记录准确 |
+| `on_order_units` | 当日在途库存 | 是，保证目标决策日记录准确 |
+| `lead_time_days` | 采购提前期 | 是，可按供应商或物料维护 |
+| `safety_stock_units` | 业务设定的安全库存 | 可选；也可在看板中启用自定义计算 |
+| `holiday_flag` | 节假日标记，通常为 0/1 | 按实际业务日历修改 |
+| `promo_flag` | 促销或特殊事件标记，通常为 0/1 | 按实际业务场景修改 |
+| `arrivals_units` | 当日到货量，主要用于策略仿真 | 运行完整分析脚本时需要 |
+| `stockout`、`fill_rate` | 历史服务水平信息 | AI 库存查询和效果分析时使用 |
+
+数据应按“每个 SKU × 仓库每天一行”组织，`date` 应可解析为日期。每个组合应保留足够的连续历史记录；当前看板要求记录数至少大于“验证集天数 + 30 天”。
+
+当前主看板为了演示历史回测，将验证区间前一天作为决策日，并读取该日的在手、在途、提前期和安全库存，而不是直接读取 CSV 最后一行。若用于当天的实际补货决策，应先完成历史验证，再将 `02_streamlit_app.py` 中的决策快照改为最新业务日，并同步调整预测起点。AI 助手的库存工具也采用相同的回测快照设计。
+
+> 当前版本未提供文件上传控件。修改 CSV 后请重新启动应用；若仍显示旧数据，可清除 Streamlit 缓存后重新运行。
 
 ---
 
 ## 4. 快速开始
 
-### 方式 A · 一键脚本（最简单）
+### 4.1 启动系统
 
-**Windows**：双击 `run.bat`，或在终端里
-```bat
+#### 方式 A：一键启动
+
+Windows 用户可以双击 `run.bat`，或在 PowerShell 中运行：
+
+```powershell
 .\run.bat
 ```
 
-**macOS / Linux**：
+macOS / Linux 用户运行：
+
 ```bash
 chmod +x run.sh
 ./run.sh
 ```
 
-脚本会依次执行：安装依赖 → 跑实验脚本 → 启动 Streamlit 看板。
+一键脚本会依次安装依赖、执行离线分析脚本并启动 Streamlit 看板。
 
-### 方式 B · conda 环境（推荐 Windows 用户，最稳）
+#### 方式 B：使用 conda
 
 ```bash
 conda env create -f environment.yml
@@ -121,7 +136,7 @@ python 01_demand_forecast_and_replenishment.py
 streamlit run 02_streamlit_app.py
 ```
 
-### 方式 C · pip
+#### 方式 C：使用 pip
 
 ```bash
 pip install -r requirements.txt
@@ -129,122 +144,191 @@ python 01_demand_forecast_and_replenishment.py
 streamlit run 02_streamlit_app.py
 ```
 
-> **重要：看板必须用 `streamlit run`，不能用 `python`！**
-> 用 `python 02_streamlit_app.py` 会刷一堆 `missing ScriptRunContext` 警告且看板不会出现——这是 Streamlit 必须由 `streamlit` CLI 启动才能拉起内部服务。
+启动后访问 `http://localhost:8501`。停止服务时在终端按 `Ctrl+C`。
 
-启动看板后浏览器自动打开 `http://localhost:8501`，按 `Ctrl+C` 退出。
+> 看板必须使用 `streamlit run 02_streamlit_app.py` 启动，不能直接执行 `python 02_streamlit_app.py`。
 
-### 4.1 AI 助手 Tab —— 需要智谱 AI API Key
+如果只想使用已有数据进入看板，可以在依赖安装完成后直接运行 Streamlit；如果修改了数据并希望重新生成全部分析产物，请先执行离线分析脚本。
 
-主看板（Prophet 预测 + 补货建议）不需要 Key 即可使用。**AI 助手 Tab 调用智谱 GLM**，需要：
+### 4.2 AI 助手
 
-1. 注册并申请 Key：https://open.bigmodel.cn/usercenter/apikeys
-2. 两种用法（任选其一）：
-   - **临时**：在 Streamlit 侧栏 "智谱 AI API Key" 框粘贴
-   - **永久**（Windows PowerShell）：
-     ```powershell
-     [Environment]::SetEnvironmentVariable("ZHIPUAI_API_KEY", "你的key", "User")
-     ```
-3. 默认模型 `glm-4-plus`；如需省钱测试，改 `agent_core.py` 中的 `MODEL = "glm-4-flash"`
+主看板不需要 API Key。AI 助手使用智谱 GLM，需要先申请智谱 AI API Key。
 
-⚠️ **不要把 Key 写入代码或 commit 到 git**。本项目的 `.gitignore` 已排除 `.env` / `secrets.toml` 等典型密钥文件。
+1. 在智谱开放平台申请 API Key：<https://open.bigmodel.cn/usercenter/apikeys>
+2. 临时使用时，在应用侧栏的“智谱 AI API Key”输入框中粘贴 Key。
+3. Windows 用户也可以设置用户级环境变量：
+
+```powershell
+[Environment]::SetEnvironmentVariable("ZHIPUAI_API_KEY", "你的key", "User")
+```
+
+重新打开终端并启动应用后，AI 助手会自动读取该环境变量。请勿将 Key 写入源代码或提交到 Git。
+
+可以尝试以下问题：
+
+- `SKU005 在 WH_A 的当前库存状态怎么样？`
+- `预测 SKU001 在 WH_B 未来 28 天的需求。`
+- `SKU010 在 WH_A 是否需要补货？建议补多少？`
+- `列出当前可查询的 SKU 和仓库。`
+
+默认模型在 `agent_core.py` 的 `MODEL` 中配置。调整模型时，请确认目标模型支持当前的工具调用方式。
+
+### 4.3 修改配置
+
+#### 主看板参数
+
+| 参数 | 默认值与范围 | 作用 | 实际使用建议 |
+|---|---|---|---|
+| 选择 SKU | 数据文件中的 SKU | 指定要分析的物料 | 选择实际需要制定库存计划的物料 |
+| 选择仓库 | 数据文件中的仓库 | 指定库存地点 | 不同仓库应分别预测和决策 |
+| 预测天数 `horizon` | 默认 28 天；7～56 天 | 控制训练截止点之后的预测观察范围 | 大于验证集天数时，图中才会额外显示超出已知数据的未来区间 |
+| 验证集天数 `test` | 默认 28 天；7～56 天 | 留出最近一段历史数据评估模型 | 属于模型测试参数；日常决策可保留默认值 |
+| 评审周期 R | 默认 7 天；1～14 天 | 表示多久检查一次库存，也影响订到点 S | 按实际补货频率设置，如每日、每周或双周评审 |
+| 服务水平 Z | 默认 1.65 | 将目标服务水平转换为安全系数 | 1.28、1.65、1.96、2.33 分别约对应 90%、95%、97.5%、99% |
+| 自定义安全库存 | 默认关闭 | 开启后使用 `Z × 日需求标准差 × √提前期` | 有明确服务水平策略时开启；否则使用 CSV 中的 `safety_stock_units` |
+
+这些参数只影响当前主看板会话，不会改写原始 CSV。
+
+#### 代码级配置
+
+| 参数 | 所在文件 | 作用 |
+|---|---|---|
+| `DATA_PATH` | `01_demand_forecast_and_replenishment.py`、`02_streamlit_app.py`、`agent_tools.py` | 数据文件路径；更换文件名时需保持三处一致 |
+| `OUTPUT_DIR` | `01_demand_forecast_and_replenishment.py` | 分析结果输出目录 |
+| `FORECAST_HORIZON` | `01_demand_forecast_and_replenishment.py` | 批量预测天数 |
+| `TEST_HORIZON` | `01_demand_forecast_and_replenishment.py`、`agent_tools.py` | 模型验证区间长度 |
+| `REVIEW_PERIOD` | `01_demand_forecast_and_replenishment.py`、`agent_tools.py` | 默认库存评审周期 |
+| `GLOBAL_THRESHOLD`、`GLOBAL_ORDER_QTY` | `01_demand_forecast_and_replenishment.py` | 仅用于与传统固定补货策略对比 |
+| `MODEL` | `agent_core.py` | AI 助手使用的智谱模型 |
+
+修改代码级配置后需要重启程序；修改批量分析参数后，还需重新运行 `01_demand_forecast_and_replenishment.py` 才会生成新的输出结果。
 
 ---
 
-## 5. 方法论
+## 5. 项目结构
 
-### 5.1 预测：Prophet + 节假日/促销外生回归
+```text
+spare-parts-forecast-replenishment/
+├── README.md
+├── run.bat
+├── run.sh
+├── requirements.txt
+├── environment.yml
+├── 01_demand_forecast_and_replenishment.py   # 批量预测、补货分析与测试
+├── 02_streamlit_app.py                       # 主看板与 AI 助手界面
+├── agent_tools.py                            # Agent 可调用的业务工具
+├── agent_core.py                             # GLM 工具调用流程
+├── inventory_replenishment_timeseries_10000.csv
+├── sample_outputs/                           # 项目示例结果
+├── outputs/                                  # 当前运行生成的结果
+└── run_logs/                                 # 当前运行日志
+```
 
-- 每 SKU/仓单独建模（40 条时间序列）
-- 训练 222 天，验证 28 天（留出法）
-- 启用 `weekly_seasonality`，禁用 `yearly_seasonality`（数据只有 8 个月）
-- 加入 `holiday_flag`、`promo_flag` 作为额外回归变量
-- `interval_width=0.95` → 95% 预测区间
+离线分析完成后，重点业务输出包括：
 
-### 5.2 补货：(R, s, S) 周期评审 + 动态 ROP
+- `outputs/replenishment_recommendation.csv`：全部 SKU/仓库的补货建议。
+- `outputs/sku_warehouse_summary.csv`：各 SKU/仓库的需求与库存汇总。
+- `outputs/validation_metrics_per_sku.csv`：模型验证指标，仅用于评估预测质量。
+- `outputs/strategy_comparison.csv`：补货策略测试结果。
 
-每个评审日 (R = 7) 决策：
-- **再订货点** ROP = Prophet 预测未来 L 天需求 + 安全库存
-- **订到点** S = ROP + Prophet 预测未来 R 天需求
-- 当 *库存位置* (on_hand + on_order) < ROP 时，下单到 S
+---
 
-### 5.3 策略对比（28 天滚动仿真）
+## 6. 计算方法
 
-三策略起点相同，历史在途订单（`arrivals_units`）按真实日期到货：
+### 6.1 需求预测
 
-| 策略 | 说明 | 缺货天数/SKU·仓 | Fill Rate |
-|---|---|---|---|
-| A · 全局固定阈值 | 全 SKU 共用 T=100, Q=200（"管理员拍脑袋"基线） | 1.93 | 94.88% |
-| B · 每 SKU 历史均值 | ROP=avg×L，分 SKU 但静态 | 0.68 | 98.33% |
-| **C · Prophet 动态 ROP** | 分 SKU + 时序感知（主策略） | **0.68** | **98.33%** |
+- 每个 SKU/仓库组合单独建立 Prophet 模型。
+- 使用周内季节性，不启用年季节性。
+- 使用 `holiday_flag` 和 `promo_flag` 作为额外回归变量。
+- 输出点预测和 95% 预测区间。
 
-### 5.4 AI 助手层：智谱 GLM + tool-use
+### 6.2 补货决策
 
-`agent_tools.py` 把上述 Prophet/ROP 计算封装为 5 个工具函数，Agent 通过 ZhipuAI SDK（OpenAI 兼容协议）动态调用：
+系统采用动态 `(R, s, S)` 周期评审策略：
+
+```text
+ROP = 未来 L 天预测需求 + 安全库存
+S   = ROP + 未来 R 天预测需求
+库存位置 = 在手库存 + 在途库存
+```
+
+当库存位置小于 ROP 时，`建议下单量 = S - 库存位置`。其中 L 为采购提前期，R 为库存评审周期。
+
+### 6.3 AI 助手工具
 
 | 工具 | 作用 |
 |---|---|
-| `list_skus` | 列出所有可用 SKU/仓库组合 |
-| `get_inventory_status` | 查 SKU 当前库存、安全库存、提前期、历史 Fill Rate |
-| `forecast_demand` | 调 Prophet 预测未来 N 天需求，附验证集 MAE |
-| `compute_replenishment` | 计算动态 ROP + 订到点 S + 建议下单量 |
-| `place_order` | **沙盒**模拟下单（写日志到 `outputs/sandbox_orders.log`，不触发真实采购） |
-
-[agent_core.py](agent_core.py) 实现的 tool-use 手动循环参考 OpenAI / ZhipuAI 标准模式：`finish_reason == "tool_calls"` 时执行所有工具 → `role:"tool"` 消息塞回 → 继续直到 `finish_reason == "stop"`。
+| `list_skus` | 列出可用的 SKU/仓库组合 |
+| `get_inventory_status` | 查询当前库存、安全库存、提前期和历史服务水平 |
+| `forecast_demand` | 预测指定时间范围内的需求 |
+| `compute_replenishment` | 计算 ROP、订到点和建议下单量 |
+| `place_order` | 执行沙盒模拟下单，不触发真实采购 |
 
 ---
 
-## 6. 核心 KPI 出处对照表
+## 7. 测试与参考结果
 
-| 指标 | 数值 | 字段 | 出处 |
-|---|---|---|---|
-| 验证集相对 MAE（20 SKU × 4 周预测） | 29.98% | `validation_relative_mae_avg` | `sample_outputs/headline_metrics.csv` |
-| 缺货风险相对降低（动态 ROP vs 全局固定基线） | 64.94% | `stockout_reduction_pct` | `sample_outputs/headline_metrics.csv` |
-| Fill Rate 提升 | 94.88% → 98.33%（+3.46 pp） | `fill_rate_fixed` / `fill_rate_dynamic` | `sample_outputs/headline_metrics.csv` |
-| 交付形态 | Python 脚本 + Streamlit 看板 | `01_*.py` / `02_*.py` + `sample_outputs/*.png` | 本仓库 |
+本节数据用于说明当前示例数据上的测试表现，不应替代实际业务数据上的重新验证。
 
----
+| 测试指标 | 示例结果 | 来源 |
+|---|---:|---|
+| 验证集相对 MAE | 29.98% | `sample_outputs/headline_metrics.csv` |
+| 验证集 sMAPE | 31.75% | `sample_outputs/validation_metrics_per_sku.csv` |
+| Prophet 相对 naive 均值 MAE 改善 | +5.34% | `sample_outputs/headline_metrics.csv` |
+| 动态策略相对固定策略的缺货天数降幅 | 64.94% | `sample_outputs/headline_metrics.csv` |
+| Fill Rate | 94.88% → 98.33% | `sample_outputs/headline_metrics.csv` |
 
-## 7. 已知局限与设计取舍
+**每日总需求与各 SKU 平均需求**
 
-诚实陈述项目当前的边界与权衡：
+![EDA 概览](sample_outputs/eda_overview.png)
 
-1. **该数据需求平稳**，Prophet 相对 naive 均值改善有限（+5.34% MAE）。Section 5 中策略 B 与 C 持平也印证这点。**真实部署建议做 model selection**——按 sMAPE 在 naive / Prophet / Croston-SBA 之间逐 SKU 择优。
-2. **备件需求常为间歇性**（很多天 0 需求），MAPE 在此场景数学上必然爆炸——已用 sMAPE / 相对 MAE 替代。
-3. **未对外生变量做未来值预测**（如 `weather_index`），目前只使用了已知的 `holiday_flag` / `promo_flag`。
-4. **滚动验证未做** —— 仅单次留出 28 天。生产建议改 expanding-window CV。
+**Prophet 预测与实际需求对比**
 
----
+![预测测试](sample_outputs/demo_forecast_SKU001_WH_A.png)
 
-## 8. 路线图
+**三种补货策略的缺货天数对比**
 
-- [x] **Phase 1 · MVP**：Prophet + 动态 ROP + Streamlit 看板（当前）
-- [ ] **Phase 2 · Model Zoo**：补充 Croston-SBA / SARIMAX / LightGBM，每 SKU 选最优
-- [ ] **Phase 3 · 成本建模**：把 holding / stockout / ordering 三栏 cost 纳入目标函数，做总成本优化
-- [x] **Phase 4 · 对话 Agent**：基于智谱 GLM（OpenAI 兼容协议）的 tool-use，自然语言提问 → 工具调用 → 决策建议 + 沙盒下单
+![策略对比](sample_outputs/strategy_comparison.png)
 
----
-
-## 9. 复现说明
-
-要复现 `sample_outputs/` 里的数字：
+重新生成测试结果：
 
 ```bash
 python 01_demand_forecast_and_replenishment.py
 ```
 
-新产物落到 `outputs/`，**不覆盖** `sample_outputs/`。完整 stdout 日志会写到 `run_logs/YYYYMMDDHHMM.txt`。
+新结果写入 `outputs/`，不会覆盖 `sample_outputs/`；运行日志写入 `run_logs/YYYYMMDDHHMM.txt`。
 
-随机性来源：Prophet 内部 MCMC（实际用 MAP 估计时为零）。同机环境多次复跑结果应位级一致。
+---
+
+## 8. 已知限制
+
+- 示例数据的需求相对平稳，Prophet 相对简单基线的改善有限；实际部署前应按 SKU 比较多种预测模型。
+- 备件需求可能具有间歇性，不能只依赖 MAPE，应结合 MAE、sMAPE、Bias 和业务缺货成本评估。
+- 当前系统默认未来的节假日和促销标记为 0；实际使用时应接入未来业务日历。
+- 当前验证方式为单次留出验证，生产环境建议使用滚动时间窗验证。
+- 补货建议尚未自动考虑最小起订量、包装倍数、仓储容量、采购预算和供应商产能。
+- AI 助手的下单功能仅用于测试，不会写入 ERP 或真实采购系统。
+
+---
+
+## 9. 后续计划
+
+- [x] Prophet 需求预测与动态 ROP
+- [x] Streamlit 主看板
+- [x] AI 对话助手与工具调用
+- [ ] 增加 Croston-SBA、SARIMAX、LightGBM 等模型并按 SKU 自动选择
+- [ ] 纳入持有成本、缺货成本和订购成本
+- [ ] 支持在界面中上传数据并配置字段映射
+- [ ] 对接 ERP/WMS 的库存和采购数据
 
 ---
 
 ## 10. License
 
-MIT License — 见 [LICENSE](LICENSE)
+本项目采用 MIT License，详见 [LICENSE](LICENSE)。
 
 ## 11. 联系方式
 
-如有问题，请直接开 issue。
+如有问题，请提交 issue。
 
-> 数据来自 Kaggle 公开数据集；所有指标可基于仓库代码完整复现。
+> 示例数据来自 Kaggle 公开数据集；测试指标可通过仓库中的脚本重新生成。
